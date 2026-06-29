@@ -281,7 +281,13 @@ export function waitForTx(
       await client.waitForTransactionReceipt({ hash });
       onUpdate({ status: "finalized", hash });
     } catch (e) {
-      onUpdate({ status: "error", hash, error: e instanceof Error ? e.message : "Transaction failed" });
+      const msg = e instanceof Error ? e.message : String(e);
+      // Network fetch errors mean we lost the connection, not that the tx failed
+      if (msg.includes("fetch") || msg.includes("network") || msg.includes("Failed to fetch")) {
+        onUpdate({ status: "unconfirmed", hash, error: "Transaction sent — confirmation timed out. Check the explorer to verify." });
+      } else {
+        onUpdate({ status: "error", hash, error: msg });
+      }
     }
   })();
 }

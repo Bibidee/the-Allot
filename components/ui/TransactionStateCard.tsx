@@ -12,11 +12,12 @@ export function TransactionStateCard({ state, className }: Props) {
   if (state.status === "idle") return null;
 
   const config = {
-    pending:    { icon: <Loader2 className="animate-spin w-4 h-4 text-[#f0c040]" />, label: "Broadcasting", cls: "border-[#f0c040]/30" },
-    confirming: { icon: <Clock className="w-4 h-4 text-[#60a5fa]" />, label: "Confirming", cls: "border-[#3b82f6]/30" },
-    finalized:  { icon: <CheckCircle2 className="w-4 h-4 text-[#34d399]" />, label: "Finalized", cls: "border-[#34d399]/30" },
-    error:      { icon: <XCircle className="w-4 h-4 text-[#f87171]" />, label: "Failed", cls: "border-[#ef4444]/30" },
-    idle:       { icon: null, label: "", cls: "" },
+    pending:      { icon: <Loader2 className="animate-spin w-4 h-4 text-[#f0c040]" />, label: "Broadcasting", cls: "border-[#f0c040]/30" },
+    confirming:   { icon: <Clock className="w-4 h-4 text-[#60a5fa]" />, label: "Confirming", cls: "border-[#3b82f6]/30" },
+    finalized:    { icon: <CheckCircle2 className="w-4 h-4 text-[#34d399]" />, label: "Finalized", cls: "border-[#34d399]/30" },
+    error:        { icon: <XCircle className="w-4 h-4 text-[#f87171]" />, label: "Failed", cls: "border-[#ef4444]/30" },
+    unconfirmed:  { icon: <Clock className="w-4 h-4 text-[#f0c040]" />, label: "Sent — verify on explorer", cls: "border-[#f0c040]/30" },
+    idle:         { icon: null, label: "", cls: "" },
   }[state.status];
 
   return (
@@ -38,7 +39,11 @@ export function TransactionStateCard({ state, className }: Props) {
           </a>
         </div>
       )}
-      {state.error && <p className="text-xs text-[#f87171] mt-1">{state.error}</p>}
+      {state.error && (
+        <p className={`text-xs mt-1 ${state.status === "unconfirmed" ? "text-[#f0c040]" : "text-[#f87171]"}`}>
+          {state.error}
+        </p>
+      )}
     </div>
   );
 }

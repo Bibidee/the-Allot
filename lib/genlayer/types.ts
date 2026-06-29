@@ -104,7 +104,7 @@ export interface RecipientClaim {
 }
 
 export interface TxState {
-  status: "idle" | "pending" | "confirming" | "finalized" | "error";
+  status: "idle" | "pending" | "confirming" | "finalized" | "error" | "unconfirmed";
   hash?: string;
   error?: string;
 }
