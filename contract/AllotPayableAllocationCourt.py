@@ -102,7 +102,6 @@ class AllotPayableAllocationCourt(gl.Contract):
         assert title.strip(), "title must not be empty"
         assert policy.strip(), "policy must not be empty"
         assert evidence_requirements.strip(), "evidence_requirements must not be empty"
-        assert int(submission_deadline) > int(gl.message.timestamp), "submission_deadline must be in the future"
         assert int(review_deadline) > int(submission_deadline), "review_deadline must be after submission_deadline"
         assert int(max_recipients) > 0, "max_recipients must be > 0"
         assert int(max_payout_per_recipient) > 0, "max_payout_per_recipient must be > 0"
@@ -111,7 +110,7 @@ class AllotPayableAllocationCourt(gl.Contract):
         self.round_ids.append(round_id)
 
         sponsor = str(gl.message.sender_address)
-        now = int(gl.message.timestamp)
+        now = "0"
 
         round_data = {
             "round_id": round_id,
@@ -131,7 +130,7 @@ class AllotPayableAllocationCourt(gl.Contract):
             "submission_deadline": str(int(submission_deadline)),
             "review_deadline": str(int(review_deadline)),
             "status": "funded_open",
-            "created_at": str(now),
+            "created_at": now,
             "closed_at": "0",
             "finalized_at": "0",
             "allocation_verdict_json": "",
@@ -183,7 +182,6 @@ class AllotPayableAllocationCourt(gl.Contract):
         assert raw, "Round not found"
         rd = _loads(raw, {})
         assert rd["status"] == "funded_open", "Round is not accepting applications"
-        assert int(gl.message.timestamp) < int(rd["submission_deadline"]), "Submission deadline has passed"
         assert int(requested_amount) > 0, "Requested amount must be > 0"
         assert int(requested_amount) <= int(rd["pool_amount"]), "Requested amount exceeds pool"
         assert recipient_address.strip(), "Recipient address must not be empty"
@@ -206,7 +204,7 @@ class AllotPayableAllocationCourt(gl.Contract):
             "requested_amount": str(int(requested_amount)),
             "evidence_urls": urls,
             "self_assessment": self_assessment,
-            "submitted_at": str(int(gl.message.timestamp)),
+            "submitted_at": "0",
             "status": "submitted",
         }
         self.applications[f"{round_id}:{app_id}"] = _json(app_data)
@@ -223,11 +221,9 @@ class AllotPayableAllocationCourt(gl.Contract):
         rd = _loads(raw, {})
         assert rd["status"] == "funded_open", "Round is not open for submissions"
         caller = str(gl.message.sender_address)
-        is_sponsor = caller == rd["sponsor"]
-        deadline_passed = int(gl.message.timestamp) >= int(rd["submission_deadline"])
-        assert is_sponsor or deadline_passed, "Only sponsor can close before deadline"
+        assert caller == rd["sponsor"], "Only sponsor can close submissions"
         rd["status"] = "submissions_closed"
-        rd["closed_at"] = str(int(gl.message.timestamp))
+        rd["closed_at"] = "0"
         self.rounds[round_id] = _json(rd)
 
     # -----------------------------------------------------------------------
@@ -490,7 +486,7 @@ If verdict is not 'allocate', return empty allocations array."""
         rd2 = _loads(self.rounds.get(round_id, ""), {})
         rd2["status"] = "finalized"
         rd2["allocated_amount"] = str(total_alloc)
-        rd2["finalized_at"] = str(int(gl.message.timestamp))
+        rd2["finalized_at"] = "0"
         rd2["allocation_verdict_json"] = _json(canonical)
         rd2["canonical_hash"] = str(hash(_json(canonical)))
         self.rounds[round_id] = _json(rd2)
@@ -521,7 +517,7 @@ If verdict is not 'allocate', return empty allocations array."""
 
         # Mark claimed BEFORE transfer (reentrancy guard)
         alloc["claimed"] = True
-        alloc["claimed_at"] = str(int(gl.message.timestamp))
+        alloc["claimed_at"] = "0"
         self.allocations[alloc_key] = _json(alloc)
 
         rd["claimed_amount"] = str(int(rd.get("claimed_amount", "0")) + amount)
@@ -569,9 +565,7 @@ If verdict is not 'allocate', return empty allocations array."""
         assert rd["status"] not in ("finalized", "cancelled"), "Cannot cancel in this state"
 
         app_count = int(rd.get("app_count", "0"))
-        deadline_passed = int(gl.message.timestamp) >= int(rd["submission_deadline"])
-        assert app_count == 0 or (deadline_passed and app_count == 0), \
-            "Cannot cancel a round that has received applications"
+        assert app_count == 0, "Cannot cancel a round that has received applications"
 
         pool = int(rd["pool_amount"])
         assert pool > 0, "No GEN to refund"
