@@ -6,10 +6,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatDeadline(ts: string | number): string {
-  const d = new Date(Number(ts) * 1000);
+  const n = Number(ts);
+  if (!n || n === 0) return "—";
+  const d = new Date(n * 1000);
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 export function isDeadlinePassed(ts: string | number): boolean {
-  return Date.now() / 1000 > Number(ts);
+  const n = Number(ts);
+  if (!n || n === 0) return false;
+  return Date.now() / 1000 > n;
 }
