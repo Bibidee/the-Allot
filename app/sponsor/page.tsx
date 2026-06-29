@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getSponsorRounds, weiToGen } from "@/lib/genlayer/contract";
+import { listRounds, getRound, weiToGen } from "@/lib/genlayer/contract";
 import type { Round } from "@/lib/genlayer/types";
 import { GenAmount } from "@/components/ui/GenAmount";
 import { RoundStatusPill } from "@/components/ui/RoundStatusPill";
@@ -17,7 +17,12 @@ export default function SponsorPage() {
   useEffect(() => {
     if (!address) return;
     setLoading(true);
-    getSponsorRounds(address.toLowerCase()).then(setRounds).finally(() => setLoading(false));
+    listRounds().then((summaries) => {
+      const mine = summaries.filter(
+        (r) => r.sponsor.toLowerCase() === address.toLowerCase()
+      );
+      return Promise.all(mine.map((r) => getRound(r.round_id)));
+    }).then((full) => setRounds(full.filter(Boolean) as Round[])).finally(() => setLoading(false));
   }, [address]);
 
   const totalEscrowed = rounds.reduce((s, r) => s + BigInt(r.pool_amount), 0n);
