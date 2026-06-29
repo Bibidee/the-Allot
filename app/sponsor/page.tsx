@@ -17,7 +17,7 @@ export default function SponsorPage() {
   useEffect(() => {
     if (!address) return;
     setLoading(true);
-    getSponsorRounds(address).then(setRounds).finally(() => setLoading(false));
+    getSponsorRounds(address.toLowerCase()).then(setRounds).finally(() => setLoading(false));
   }, [address]);
 
   const totalEscrowed = rounds.reduce((s, r) => s + BigInt(r.pool_amount), 0n);

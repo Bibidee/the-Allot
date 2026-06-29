@@ -16,7 +16,7 @@ export default function ClaimPage() {
   useEffect(() => {
     if (!address) return;
     setLoading(true);
-    getRecipientClaims(address).then(setClaims).finally(() => setLoading(false));
+    getRecipientClaims(address.toLowerCase()).then(setClaims).finally(() => setLoading(false));
   }, [address]);
 
   const pending = claims.filter((c) => !c.claimed);
