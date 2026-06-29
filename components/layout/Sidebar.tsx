@@ -4,17 +4,29 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Layers, PlusCircle, Search, Coins, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useWallet } from "@/lib/context/WalletContext";
+import { useEffect, useState } from "react";
+import { listRounds } from "@/lib/genlayer/contract";
 
 const NAV = [
-  { href: "/",        label: "Allot",         icon: Layers,         exact: true },
-  { href: "/rounds",  label: "Explore",        icon: Search          },
-  { href: "/rounds/new", label: "New Round",   icon: PlusCircle      },
-  { href: "/claim",   label: "Claim",          icon: Coins           },
-  { href: "/sponsor", label: "Sponsor Desk",   icon: LayoutDashboard },
+  { href: "/",           label: "Allot",        icon: Layers,         exact: true,  sponsorOnly: false },
+  { href: "/rounds",     label: "Explore",       icon: Search,                       sponsorOnly: false },
+  { href: "/rounds/new", label: "New Round",     icon: PlusCircle,                   sponsorOnly: false },
+  { href: "/claim",      label: "Claim",         icon: Coins,                        sponsorOnly: false },
+  { href: "/sponsor",    label: "Sponsor Desk",  icon: LayoutDashboard,              sponsorOnly: true  },
 ];
 
 export function Sidebar() {
   const path = usePathname();
+  const { address } = useWallet();
+  const [isSponsor, setIsSponsor] = useState(false);
+
+  useEffect(() => {
+    if (!address) { setIsSponsor(false); return; }
+    listRounds().then((rounds) => {
+      setIsSponsor(rounds.some((r) => r.sponsor.toLowerCase() === address.toLowerCase()));
+    }).catch(() => setIsSponsor(false));
+  }, [address]);
 
   return (
     <aside className="fixed inset-y-0 left-0 w-52 bg-[#04080f] border-r border-[#0d1829] flex flex-col z-40">
@@ -24,7 +36,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 py-4 space-y-0.5">
-        {NAV.map(({ href, label, icon: Icon, exact }) => {
+        {NAV.filter(({ sponsorOnly }) => !sponsorOnly || isSponsor).map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? path === href : path === href || (path.startsWith(href + "/") && href !== "/");
           return (
             <Link
