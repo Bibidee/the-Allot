@@ -5,8 +5,8 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { WalletBar } from "@/components/layout/WalletBar";
 
 export const metadata: Metadata = {
-  title: "Allot — Payable GEN Allocation Court",
-  description: "Fair allocation, enforced by escrow. GenLayer-native allocation rounds with AI-consensus distribution.",
+  title: "Allot — Vault Court Allocation System",
+  description: "Payable GEN allocation court. Sponsors escrow, GenLayer judges, recipients claim.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -15,12 +15,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <WalletProvider>
           <Sidebar />
-          <div className="ml-52 min-h-screen flex flex-col">
-            <header className="sticky top-0 z-30 bg-[#04080f]/80 backdrop-blur border-b border-[#0d1829] px-6 py-3 flex items-center justify-between">
-              <div />
+          <div style={{ marginLeft: "192px", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+            <header style={{
+              position: "sticky", top: 0, zIndex: 30,
+              background: "rgba(3,9,18,0.92)", backdropFilter: "blur(12px)",
+              borderBottom: "1px solid var(--vault-border)",
+              padding: "0 24px", height: "48px",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+            }}>
+              <div className="text-[10px] uppercase tracking-[0.2em]"
+                style={{ color: "var(--text-3)", fontFamily: "'JetBrains Mono', monospace" }}>
+                GenLayer StudioNet · Chain 61999
+              </div>
               <WalletBar />
             </header>
-            <main className="flex-1 px-6 py-6">{children}</main>
+            <main style={{ flex: 1, padding: "28px 28px 48px" }}>{children}</main>
           </div>
         </WalletProvider>
       </body>

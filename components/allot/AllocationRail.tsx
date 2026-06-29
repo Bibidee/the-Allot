@@ -1,123 +1,77 @@
 "use client";
 
-import { ArrowRight, Vault, Gavel, Coins, RotateCcw, Wallet } from "lucide-react";
+import { ArrowRight, Wallet, Lock, Gavel, Coins, RotateCcw } from "lucide-react";
 import { GenAmount } from "@/components/ui/GenAmount";
 import type { Round } from "@/lib/genlayer/types";
-import { cn } from "@/lib/utils";
 
 interface Props { round: Round }
 
-type StageState = "empty" | "active" | "complete" | "blocked";
+type State = "empty" | "active" | "complete" | "blocked";
 
-interface Stage {
-  id: string;
-  label: string;
-  sublabel: string;
-  icon: React.ReactNode;
-  amount?: bigint;
-  state: StageState;
-}
+const STATE_STYLE: Record<State, { border: string; bg: string; color: string }> = {
+  empty:    { border: "var(--vault-border)", bg: "var(--vault-panel)", color: "var(--text-3)" },
+  active:   { border: "rgba(200,153,30,0.4)", bg: "rgba(200,153,30,0.05)", color: "var(--gold-text)" },
+  complete: { border: "rgba(13,158,115,0.4)", bg: "rgba(13,158,115,0.05)", color: "var(--mint-bright)" },
+  blocked:  { border: "var(--vault-border)", bg: "var(--vault-surface)", color: "var(--text-3)" },
+};
 
 export function AllocationRail({ round }: Props) {
   const pool = BigInt(round.pool_amount);
   const allocated = BigInt(round.allocated_amount);
   const claimed = BigInt(round.claimed_amount);
   const unallocated = pool - allocated;
+  const s = round.status;
 
-  function getStageState(stage: string): StageState {
-    const s = round.status;
+  function st(stage: string): State {
     switch (stage) {
-      case "deposit":
-        return pool > 0n ? "complete" : "empty";
-      case "escrow":
-        return s === "funded_open" ? "active" : pool > 0n ? "complete" : "empty";
-      case "verdict":
-        if (s === "under_review") return "active";
-        if (s === "finalized") return "complete";
-        if (s === "submissions_closed") return "active";
-        return "empty";
-      case "claims":
-        if (s !== "finalized") return "blocked";
-        return claimed > 0n ? (claimed >= allocated ? "complete" : "active") : "active";
-      case "refund":
-        if (s !== "finalized") return "blocked";
-        return round.unallocated_refunded ? "complete" : unallocated > 0n ? "active" : "empty";
-      default:
-        return "empty";
+      case "deposit": return pool > 0n ? "complete" : "empty";
+      case "escrow":  return s === "funded_open" ? "active" : pool > 0n ? "complete" : "empty";
+      case "verdict": return s === "under_review" ? "active" : s === "finalized" ? "complete" : s === "submissions_closed" ? "active" : "empty";
+      case "claims":  return s !== "finalized" ? "blocked" : claimed > 0n ? (claimed >= allocated ? "complete" : "active") : "active";
+      case "refund":  return s !== "finalized" ? "blocked" : round.unallocated_refunded ? "complete" : unallocated > 0n ? "active" : "empty";
+      default: return "empty";
     }
   }
 
-  const stages: Stage[] = [
-    {
-      id: "deposit",
-      label: "Sponsor Wallet",
-      sublabel: "Deposit",
-      icon: <Wallet className="w-4 h-4" />,
-      amount: pool,
-      state: getStageState("deposit"),
-    },
-    {
-      id: "escrow",
-      label: "Escrow Vault",
-      sublabel: "Locked GEN",
-      icon: <Vault className="w-4 h-4" />,
-      amount: pool,
-      state: getStageState("escrow"),
-    },
-    {
-      id: "verdict",
-      label: "GenLayer Verdict",
-      sublabel: "AI Consensus",
-      icon: <Gavel className="w-4 h-4" />,
-      amount: allocated,
-      state: getStageState("verdict"),
-    },
-    {
-      id: "claims",
-      label: "Recipient Claims",
-      sublabel: "GEN Payouts",
-      icon: <Coins className="w-4 h-4" />,
-      amount: claimed,
-      state: getStageState("claims"),
-    },
-    {
-      id: "refund",
-      label: "Sponsor Refund",
-      sublabel: "Unallocated",
-      icon: <RotateCcw className="w-4 h-4" />,
-      amount: unallocated,
-      state: getStageState("refund"),
-    },
+  const stages = [
+    { id: "deposit", label: "Sponsor Wallet", sub: "Deposit", icon: <Wallet className="w-3.5 h-3.5" />, amount: pool },
+    { id: "escrow",  label: "Escrow Vault",   sub: "Locked", icon: <Lock className="w-3.5 h-3.5" />,   amount: pool },
+    { id: "verdict", label: "AI Verdict",     sub: "Consensus", icon: <Gavel className="w-3.5 h-3.5" />, amount: allocated },
+    { id: "claims",  label: "Recipient",      sub: "Claimed", icon: <Coins className="w-3.5 h-3.5" />, amount: claimed },
+    { id: "refund",  label: "Sponsor",        sub: "Refund", icon: <RotateCcw className="w-3.5 h-3.5" />, amount: unallocated },
   ];
 
-  const stateClasses: Record<StageState, string> = {
-    empty:    "border-[#1e293b] bg-[#070d1a] text-[#334155]",
-    active:   "border-[#f0c040]/50 bg-[#1e1a0e] text-[#f0c040]",
-    complete: "border-[#34d399]/50 bg-[#0d3d2b] text-[#34d399]",
-    blocked:  "border-[#1e293b] bg-[#070d1a] text-[#1e293b] opacity-40",
-  };
-
   return (
-    <div className="rounded-xl border border-[#1e293b] bg-[#040810] p-5">
-      <h3 className="text-[10px] uppercase tracking-widest text-[#475569] font-semibold mb-4">Allocation Rail</h3>
-      <div className="flex items-stretch gap-1 overflow-x-auto pb-2">
-        {stages.map((stage, i) => (
-          <div key={stage.id} className="flex items-center gap-1 flex-1 min-w-[120px]">
-            <div className={cn("flex-1 rounded-lg border p-3 flex flex-col gap-1 transition-all", stateClasses[stage.state])}>
-              <div className="flex items-center gap-1.5">
-                {stage.icon}
-                <span className="text-[9px] uppercase tracking-widest font-semibold">{stage.label}</span>
+    <div style={{ background: "var(--vault-surface)", border: "1px solid var(--vault-border)", borderRadius: "3px", padding: "16px" }}>
+      <div className="text-[9px] uppercase tracking-[0.2em] mb-4"
+        style={{ color: "var(--text-3)", fontFamily: "'JetBrains Mono', monospace" }}>
+        Payout Rail
+      </div>
+      <div className="flex items-stretch gap-1 overflow-x-auto pb-1">
+        {stages.map((stage, i) => {
+          const state = st(stage.id);
+          const style = STATE_STYLE[state];
+          return (
+            <div key={stage.id} className="flex items-center gap-1 flex-1 min-w-[90px]">
+              <div className="flex-1 p-2.5 transition-all"
+                style={{ border: `1px solid ${style.border}`, background: style.bg, borderRadius: "3px", opacity: state === "blocked" ? 0.4 : 1 }}>
+                <div className="flex items-center gap-1 mb-1" style={{ color: style.color }}>
+                  {stage.icon}
+                  <span className="text-[8px] uppercase tracking-widest font-semibold"
+                    style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                    {stage.label}
+                  </span>
+                </div>
+                <div className="text-[8px] mb-1" style={{ color: "var(--text-3)" }}>{stage.sub}</div>
+                <GenAmount wei={stage.amount} size="sm" showLabel={false} />
               </div>
-              <div className="text-[9px] opacity-60">{stage.sublabel}</div>
-              {stage.amount !== undefined && (
-                <GenAmount wei={stage.amount} size="sm" className={stage.state === "complete" ? "text-[#34d399]" : stage.state === "active" ? "text-[#f0c040]" : ""} />
+              {i < stages.length - 1 && (
+                <ArrowRight className="w-2.5 h-2.5 flex-shrink-0"
+                  style={{ color: state === "complete" ? "var(--mint)" : "var(--vault-border2)" }} />
               )}
             </div>
-            {i < stages.length - 1 && (
-              <ArrowRight className={cn("w-3 h-3 flex-shrink-0", stage.state === "complete" ? "text-[#34d399]" : "text-[#1e293b]")} />
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

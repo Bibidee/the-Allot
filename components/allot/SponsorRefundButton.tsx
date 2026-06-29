@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Round, TxState } from "@/lib/genlayer/types";
 import { refundUnallocated, waitForTx, weiToGen } from "@/lib/genlayer/contract";
 import { TransactionStateCard } from "@/components/ui/TransactionStateCard";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, CheckCircle2 } from "lucide-react";
 
 interface Props { round: Round; onRefunded?: () => void }
 
@@ -14,8 +14,9 @@ export function SponsorRefundButton({ round, onRefunded }: Props) {
 
   if (round.unallocated_refunded) {
     return (
-      <div className="flex items-center gap-2 px-4 py-2 bg-[#0d1829] border border-[#1e3a5f] rounded-lg text-sm text-[#475569]">
-        <RotateCcw className="w-4 h-4" />
+      <div className="flex items-center gap-2 px-4 py-2.5 text-sm"
+        style={{ background: "var(--vault-panel)", border: "1px solid var(--vault-border)", borderRadius: "3px", color: "var(--text-2)" }}>
+        <CheckCircle2 className="w-4 h-4" style={{ color: "var(--mint)" }} />
         Unallocated GEN refunded
       </div>
     );
@@ -23,7 +24,9 @@ export function SponsorRefundButton({ round, onRefunded }: Props) {
 
   if (unallocated <= 0n) {
     return (
-      <div className="text-xs text-[#475569] px-4 py-2">All GEN was allocated — no refund available.</div>
+      <p className="text-xs px-2 py-2" style={{ color: "var(--text-3)" }}>
+        All GEN was allocated — no refund available.
+      </p>
     );
   }
 
@@ -42,13 +45,16 @@ export function SponsorRefundButton({ round, onRefunded }: Props) {
 
   return (
     <div className="space-y-2">
-      <button
-        onClick={handle}
+      <button onClick={handle}
         disabled={txState.status === "pending" || txState.status === "confirming"}
-        className="flex items-center gap-2 px-4 py-2.5 bg-[#0a1628] hover:bg-[#0d2049] disabled:opacity-50 border border-[#1e3a5f] text-[#60a5fa] font-semibold text-sm rounded-lg transition-all"
-      >
+        className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-all disabled:opacity-40"
+        style={{
+          background: "var(--vault-panel)", border: "1px solid var(--vault-border)",
+          color: "var(--court-blue-b)", borderRadius: "3px",
+          fontFamily: "'Space Grotesk', sans-serif",
+        }}>
         <RotateCcw className="w-4 h-4" />
-        Refund Unallocated GEN · {weiToGen(unallocated.toString())} GEN
+        Refund Unallocated · {weiToGen(unallocated.toString())} GEN
       </button>
       <TransactionStateCard state={txState} />
     </div>

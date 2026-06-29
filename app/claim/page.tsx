@@ -6,7 +6,7 @@ import { getRecipientClaims } from "@/lib/genlayer/contract";
 import type { RecipientClaim } from "@/lib/genlayer/types";
 import { GenAmount } from "@/components/ui/GenAmount";
 import { useWallet } from "@/lib/context/WalletContext";
-import { Coins, Loader2 } from "lucide-react";
+import { Coins, Loader2, CheckCircle2 } from "lucide-react";
 
 export default function ClaimPage() {
   const { address, connect } = useWallet();
@@ -23,45 +23,80 @@ export default function ClaimPage() {
   const claimed = claims.filter((c) => c.claimed);
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="flex items-center gap-2 mb-6">
-        <Coins className="w-5 h-5 text-[#f0c040]" />
-        <h1 className="text-2xl font-bold text-[#f0f4f8]">Claim Center</h1>
+    <div style={{ maxWidth: "720px" }}>
+
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-8 h-8 flex items-center justify-center"
+          style={{ background: "rgba(200,153,30,0.08)", border: "1px solid rgba(200,153,30,0.3)" }}>
+          <Coins className="w-4 h-4" style={{ color: "var(--gold-text)" }} />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+            My Claims
+          </h1>
+          <p className="text-xs" style={{ color: "var(--text-3)" }}>GEN allocations from finalized rounds</p>
+        </div>
       </div>
 
       {!address ? (
-        <div className="text-center py-12">
-          <p className="text-[#475569] mb-4">Connect your wallet to see claimable GEN payouts.</p>
-          <button onClick={connect} className="px-4 py-2 bg-[#f0c040] text-[#0a0f1a] font-bold text-sm rounded-lg">
+        <div className="text-center py-12"
+          style={{ border: "1px dashed var(--vault-border2)", borderRadius: "3px" }}>
+          <Coins className="w-6 h-6 mx-auto mb-3" style={{ color: "var(--text-3)" }} />
+          <p className="text-sm mb-4" style={{ color: "var(--text-2)" }}>
+            Connect your wallet to see claimable GEN payouts.
+          </p>
+          <button onClick={connect}
+            className="px-5 py-2.5 text-sm font-bold transition-all"
+            style={{ background: "var(--gold)", color: "#030912", borderRadius: "3px", fontFamily: "'Space Grotesk', sans-serif" }}>
             Connect Wallet
           </button>
         </div>
       ) : loading ? (
-        <div className="flex items-center gap-2 text-[#475569] py-12 justify-center">
-          <Loader2 className="w-4 h-4 animate-spin" /><span className="text-sm">Loading claims…</span>
+        <div className="flex items-center justify-center gap-2 py-12" style={{ color: "var(--text-3)" }}>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span className="text-sm">Loading payout rail…</span>
         </div>
       ) : (
-        <div className="space-y-6">
-          <div className="rounded-xl border border-[#1e293b] bg-[#070d1a] p-4 text-xs flex items-center gap-3">
-            <Coins className="w-4 h-4 text-[#f0c040]" />
-            <span className="font-mono text-[#60a5fa]">{address}</span>
+        <div className="space-y-5">
+
+          {/* Wallet badge */}
+          <div className="flex items-center gap-3 px-4 py-3"
+            style={{ background: "var(--vault-panel)", border: "1px solid var(--vault-border)", borderRadius: "3px" }}>
+            <div className="w-2 h-2 rounded-full" style={{ background: "var(--mint-bright)" }} />
+            <span className="text-xs" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text-2)" }}>
+              {address}
+            </span>
           </div>
 
+          {/* Claimable */}
           {pending.length > 0 && (
             <div>
-              <h2 className="text-[10px] uppercase tracking-widest text-[#f0c040] font-semibold mb-3">Claimable GEN</h2>
+              <div className="text-[9px] uppercase tracking-[0.2em] mb-3"
+                style={{ color: "var(--gold-text)", fontFamily: "'JetBrains Mono', monospace" }}>
+                Claimable GEN · {pending.length} payout{pending.length !== 1 ? "s" : ""}
+              </div>
               <div className="space-y-2">
                 {pending.map((c) => (
-                  <div key={`${c.round_id}:${c.application_id}`} className="rounded-xl border border-[#f0c040]/30 bg-[#1e1a0e] p-4 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-[#e2e8f0]">{c.round_title || `Round #${c.round_id}`}</p>
-                      <p className="text-xs text-[#475569]">Application #{c.application_id}</p>
+                  <div key={`${c.round_id}:${c.application_id}`}
+                    className="flex items-center justify-between gap-4 p-4"
+                    style={{ background: "rgba(200,153,30,0.04)", border: "1px solid rgba(200,153,30,0.2)", borderRadius: "3px" }}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate"
+                        style={{ fontFamily: "'Space Grotesk', sans-serif", color: "var(--text-1)" }}>
+                        {c.round_title || `Round #${c.round_id}`}
+                      </p>
+                      <p className="text-[10px] mt-0.5"
+                        style={{ color: "var(--text-3)", fontFamily: "'JetBrains Mono', monospace" }}>
+                        Application #{c.application_id}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-shrink-0">
                       <GenAmount wei={c.amount} size="md" highlight />
                       <Link href={`/rounds/${c.round_id}`}
-                        className="px-3 py-1.5 bg-[#f0c040] text-[#0a0f1a] font-bold text-xs rounded-lg hover:bg-[#fcd34d] transition-all">
-                        Claim GEN Payout
+                        className="px-3 py-1.5 text-xs font-bold transition-all"
+                        style={{ background: "var(--gold)", color: "#030912", borderRadius: "3px", fontFamily: "'Space Grotesk', sans-serif" }}>
+                        Claim →
                       </Link>
                     </div>
                   </div>
@@ -70,19 +105,36 @@ export default function ClaimPage() {
             </div>
           )}
 
+          {/* Claimed history */}
           {claimed.length > 0 && (
             <div>
-              <h2 className="text-[10px] uppercase tracking-widest text-[#475569] font-semibold mb-3">Claimed History</h2>
+              <div className="text-[9px] uppercase tracking-[0.2em] mb-3"
+                style={{ color: "var(--text-3)", fontFamily: "'JetBrains Mono', monospace" }}>
+                Claimed History · {claimed.length} payout{claimed.length !== 1 ? "s" : ""}
+              </div>
               <div className="space-y-2">
                 {claimed.map((c) => (
-                  <div key={`${c.round_id}:${c.application_id}`} className="rounded-xl border border-[#1e293b] bg-[#070d1a] p-4 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-[#64748b]">{c.round_title || `Round #${c.round_id}`}</p>
-                      <p className="text-xs text-[#334155]">Application #{c.application_id}</p>
+                  <div key={`${c.round_id}:${c.application_id}`}
+                    className="flex items-center justify-between gap-4 p-4"
+                    style={{ background: "var(--vault-panel)", border: "1px solid var(--vault-border)", borderRadius: "3px" }}>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--mint)" }} />
+                      <div className="min-w-0">
+                        <p className="text-sm truncate" style={{ color: "var(--text-2)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                          {c.round_title || `Round #${c.round_id}`}
+                        </p>
+                        <p className="text-[10px]"
+                          style={{ color: "var(--text-3)", fontFamily: "'JetBrains Mono', monospace" }}>
+                          App #{c.application_id}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <GenAmount wei={c.amount} size="sm" className="text-[#34d399]" />
-                      <span className="text-[9px] border border-[#34d399]/30 text-[#34d399] px-2 py-0.5 rounded uppercase tracking-wider">Paid</span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <GenAmount wei={c.amount} size="sm" />
+                      <span className="text-[9px] px-1.5 py-0.5 uppercase"
+                        style={{ color: "var(--mint-bright)", border: "1px solid rgba(13,158,115,0.3)", background: "rgba(13,158,115,0.08)", borderRadius: "2px", fontFamily: "'JetBrains Mono', monospace" }}>
+                        PAID
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -91,7 +143,14 @@ export default function ClaimPage() {
           )}
 
           {claims.length === 0 && (
-            <p className="text-center text-[#475569] py-8 text-sm">No allocations found for this wallet.</p>
+            <div className="py-12 text-center"
+              style={{ border: "1px dashed var(--vault-border2)", borderRadius: "3px" }}>
+              <p className="text-sm" style={{ color: "var(--text-3)" }}>No allocations found for this wallet.</p>
+              <Link href="/rounds" className="text-xs mt-2 block hover:underline"
+                style={{ color: "var(--court-blue-b)" }}>
+                Browse open rounds →
+              </Link>
+            </div>
           )}
         </div>
       )}

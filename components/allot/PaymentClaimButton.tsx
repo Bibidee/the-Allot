@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Allocation, TxState } from "@/lib/genlayer/types";
 import { claimPayout, waitForTx, weiToGen } from "@/lib/genlayer/contract";
 import { TransactionStateCard } from "@/components/ui/TransactionStateCard";
-import { Coins } from "lucide-react";
+import { Coins, CheckCircle2 } from "lucide-react";
 
 interface Props {
   roundId: string;
@@ -18,9 +18,10 @@ export function PaymentClaimButton({ roundId, allocation, onClaimed }: Props) {
 
   if (allocation.claimed) {
     return (
-      <div className="flex items-center gap-2 px-4 py-2 bg-[#0d3d2b] border border-[#34d399]/30 rounded-lg text-sm text-[#34d399]">
-        <Coins className="w-4 h-4" />
-        <span>{gen} GEN claimed</span>
+      <div className="flex items-center gap-2 px-4 py-2.5 text-sm"
+        style={{ background: "rgba(13,158,115,0.06)", border: "1px solid rgba(13,158,115,0.25)", borderRadius: "3px", color: "var(--mint-bright)" }}>
+        <CheckCircle2 className="w-4 h-4" />
+        <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{gen} GEN claimed</span>
       </div>
     );
   }
@@ -40,11 +41,13 @@ export function PaymentClaimButton({ roundId, allocation, onClaimed }: Props) {
 
   return (
     <div className="space-y-2">
-      <button
-        onClick={handle}
+      <button onClick={handle}
         disabled={txState.status === "pending" || txState.status === "confirming"}
-        className="flex items-center gap-2 px-4 py-2.5 bg-[#f0c040] hover:bg-[#fcd34d] disabled:opacity-50 disabled:cursor-not-allowed text-[#0a0f1a] font-bold text-sm rounded-lg transition-all"
-      >
+        className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold transition-all disabled:opacity-40"
+        style={{
+          background: "var(--gold)", color: "#030912", borderRadius: "3px",
+          fontFamily: "'Space Grotesk', sans-serif",
+        }}>
         <Coins className="w-4 h-4" />
         Claim GEN Payout · {gen} GEN
       </button>

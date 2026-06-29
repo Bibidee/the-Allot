@@ -1,26 +1,99 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 :root {
-  --font-display: 'Space Grotesk', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-mono: 'IBM Plex Mono', monospace;
+  --vault-black:   #030912;
+  --vault-surface: #060e1c;
+  --vault-panel:   #08132a;
+  --vault-panel2:  #0a1730;
+  --vault-border:  #0f1e3a;
+  --vault-border2: #162440;
+  --gold:          #c8991e;
+  --gold-bright:   #e6b22a;
+  --gold-dim:      rgba(200,153,30,0.15);
+  --gold-text:     #f0c04a;
+  --mint:          #0d9e73;
+  --mint-bright:   #12c98f;
+  --mint-dim:      rgba(13,158,115,0.12);
+  --amber:         #c97d06;
+  --court-blue:    #2455a4;
+  --court-blue-b:  #4a80e8;
+  --text-1:        #ccdaeb;
+  --text-2:        #3f5878;
+  --text-3:        #1e304a;
+  --red:           #a83232;
+  --red-bright:    #d94f4f;
 }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
 
 body {
-  background: #030712;
-  color: #e2e8f0;
-  font-family: var(--font-body);
+  background-color: var(--vault-black);
+  color: var(--text-1);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4 { font-family: var(--font-display); }
-code, pre, .font-mono { font-family: var(--font-mono); }
+h1, h2, h3, h4, h5, h6,
+.font-display {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  line-height: 1.2;
+}
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: #04080f; }
-::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+.font-mono,
+code, pre,
+.mono {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
 
-::selection { background: #1e3a5f; }
+/* Scrollbar */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: var(--vault-black); }
+::-webkit-scrollbar-thumb { background: var(--vault-border2); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-2); }
+
+/* Selection */
+::selection {
+  background: rgba(200,153,30,0.2);
+  color: var(--gold-bright);
+}
+
+/* Base inputs */
+input, textarea, select {
+  background: var(--vault-surface);
+  border: 1px solid var(--vault-border2);
+  color: var(--text-1);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  border-radius: 3px;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: rgba(200,153,30,0.4);
+  background: var(--vault-panel);
+}
+input::placeholder, textarea::placeholder {
+  color: var(--text-3);
+  font-style: italic;
+}
+select option {
+  background: var(--vault-panel);
+  color: var(--text-1);
+}
+textarea { resize: vertical; }
+
+/* Vault panel utility */
+.vault-panel {
+  background: var(--vault-panel);
+  border: 1px solid var(--vault-border);
+}
+.vault-panel-2 {
+  background: var(--vault-panel2);
+  border: 1px solid var(--vault-border2);
+}

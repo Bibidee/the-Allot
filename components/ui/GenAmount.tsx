@@ -1,7 +1,6 @@
 "use client";
 
 import { weiToGen } from "@/lib/genlayer/contract";
-import { cn } from "@/lib/utils";
 
 interface Props {
   wei: string | bigint;
@@ -13,24 +12,13 @@ interface Props {
 
 export function GenAmount({ wei, className, size = "md", showLabel = true, highlight }: Props) {
   const gen = weiToGen(wei);
-  const sizeClass = {
-    sm: "text-xs",
-    md: "text-sm",
-    lg: "text-base",
-    xl: "text-xl",
-  }[size];
-
+  const sz = { sm: "text-xs", md: "text-sm", lg: "text-base font-bold", xl: "text-xl font-bold" }[size];
+  const col = highlight ? "var(--gold-text)" : "var(--text-1)";
   return (
-    <span
-      className={cn(
-        "font-mono tabular-nums tracking-tight",
-        sizeClass,
-        highlight ? "text-[#f0c040]" : "text-[#e2e8f0]",
-        className
-      )}
-    >
+    <span className={`${sz}${className ? ` ${className}` : ""}`}
+      style={{ fontFamily: "'JetBrains Mono', monospace", color: className ? undefined : col }}>
       {gen}
-      {showLabel && <span className="text-[#94a3b8] ml-1 text-[0.8em]">GEN</span>}
+      {showLabel && <span className="ml-1 text-[0.8em]" style={{ color: "var(--text-3)" }}>GEN</span>}
     </span>
   );
 }
