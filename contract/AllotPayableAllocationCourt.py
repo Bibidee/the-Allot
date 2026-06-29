@@ -1,4 +1,6 @@
+# v0.2.17
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
+
 
 from genlayer import *
 import json
@@ -33,8 +35,6 @@ ALLOWED_REASON_CODES = [
     "insufficient_detail",
     "manipulation_risk",
 ]
-ALLOWED_APP_STATUSES = ["submitted", "included_in_review", "allocated", "rejected", "invalid"]
-ALLOWED_ROUND_STATUSES = ["funded_open", "submissions_closed", "under_review", "finalized", "cancelled"]
 
 
 def _json(v) -> str:
@@ -65,21 +65,17 @@ class AllotPayableAllocationCourt(gl.Contract):
     applications: TreeMap[str, str]
     # f"{round_id}:{app_id}" -> allocation JSON
     allocations: TreeMap[str, str]
-    # round counter
-    round_count: u256
-    # round_id -> number of applications
-    app_counts: TreeMap[str, u256]
+    # ordered list of all round IDs (length = round count)
+    round_ids: DynArray[str]
     # address -> JSON array of round_ids
     sponsor_rounds: TreeMap[str, str]
-    # address -> JSON array of round_ids with allocations
+    # address -> JSON array of round_ids
     recipient_rounds: TreeMap[str, str]
 
     def __init__(self) -> None:
         self.rounds = TreeMap()
         self.applications = TreeMap()
         self.allocations = TreeMap()
-        self.round_count = u256(0)
-        self.app_counts = TreeMap()
         self.sponsor_rounds = TreeMap()
         self.recipient_rounds = TreeMap()
 
@@ -111,8 +107,9 @@ class AllotPayableAllocationCourt(gl.Contract):
         assert int(max_recipients) > 0, "max_recipients must be > 0"
         assert int(max_payout_per_recipient) > 0, "max_payout_per_recipient must be > 0"
 
-        self.round_count = self.round_count + u256(1)
-        round_id = str(int(self.round_count))
+        round_id = str(len(self.round_ids) + 1)
+        self.round_ids.append(round_id)
+
         sponsor = str(gl.message.sender_address)
         now = int(gl.message.timestamp)
 
@@ -130,6 +127,7 @@ class AllotPayableAllocationCourt(gl.Contract):
             "pool_amount": str(int(value)),
             "allocated_amount": "0",
             "claimed_amount": "0",
+            "app_count": "0",
             "submission_deadline": str(int(submission_deadline)),
             "review_deadline": str(int(review_deadline)),
             "status": "funded_open",
@@ -141,7 +139,6 @@ class AllotPayableAllocationCourt(gl.Contract):
             "unallocated_refunded": False,
         }
         self.rounds[round_id] = _json(round_data)
-        self.app_counts[round_id] = u256(0)
 
         existing = _loads(self.sponsor_rounds.get(sponsor, ""), [])
         existing.append(round_id)
@@ -193,11 +190,11 @@ class AllotPayableAllocationCourt(gl.Contract):
         urls = _loads(evidence_urls, [])
         assert isinstance(urls, list) and len(urls) > 0, "At least one evidence URL is required"
 
-        app_count = self.app_counts.get(round_id, u256(0))
-        app_count = app_count + u256(1)
-        self.app_counts[round_id] = app_count
-        app_id = str(int(app_count))
+        app_count = int(rd.get("app_count", "0")) + 1
+        rd["app_count"] = str(app_count)
+        self.rounds[round_id] = _json(rd)
 
+        app_id = str(app_count)
         app_data = {
             "application_id": app_id,
             "round_id": round_id,
@@ -212,8 +209,7 @@ class AllotPayableAllocationCourt(gl.Contract):
             "submitted_at": str(int(gl.message.timestamp)),
             "status": "submitted",
         }
-        key = f"{round_id}:{app_id}"
-        self.applications[key] = _json(app_data)
+        self.applications[f"{round_id}:{app_id}"] = _json(app_data)
         return app_id
 
     # -----------------------------------------------------------------------
@@ -244,15 +240,14 @@ class AllotPayableAllocationCourt(gl.Contract):
         assert raw, "Round not found"
         rd = _loads(raw, {})
         assert rd["status"] == "submissions_closed", "Submissions must be closed before requesting allocation"
-        app_count = int(self.app_counts.get(round_id, u256(0)))
+        app_count = int(rd.get("app_count", "0"))
         assert app_count > 0, "No applications to review"
         assert int(rd["pool_amount"]) > 0, "Pool has no GEN"
 
-        # Mark under review
         rd["status"] = "under_review"
         self.rounds[round_id] = _json(rd)
 
-        # Gather application data into local variables before nondet block
+        # Collect app data into local variables before the nondet block
         apps_list = []
         for i in range(1, app_count + 1):
             app_raw = self.applications.get(f"{round_id}:{i}", "")
@@ -281,10 +276,9 @@ class AllotPayableAllocationCourt(gl.Contract):
                 f"\n---"
             )
 
-        prompt_text = f"""You are a neutral GenLayer allocation validator for the round:
+        prompt_text = f"""You are a neutral GenLayer allocation validator for round {round_id}.
 
 ROUND TITLE: {title}
-ROUND_ID: {round_id}
 
 SPONSOR POLICY:
 {policy}
@@ -300,9 +294,14 @@ MAX PAYOUT PER RECIPIENT (wei): {max_pay}
 APPLICATIONS:
 {apps_text}
 
-Your task: allocate GEN from the pool to the applicants that best fit the policy and have strong evidence. The total allocated must NEVER exceed the pool amount ({pool} wei). Each allocation must not exceed {max_pay} wei. You may allocate to at most {max_rec} recipients.
+Your task: allocate GEN from the pool to applicants that best fit the policy with strong evidence.
+CRITICAL RULES:
+- Total allocated MUST NOT exceed pool: {pool} wei
+- Each individual allocation MUST NOT exceed {max_pay} wei
+- Allocate to at most {max_rec} recipients
+- Reject weak evidence or out-of-scope submissions
 
-Return ONLY the following minimal canonical JSON — no explanation, no markdown:
+Return ONLY this minimal canonical JSON (no explanation, no markdown):
 {{
   "round_id": "{round_id}",
   "verdict": "allocate",
@@ -327,18 +326,17 @@ All amounts are strings in wei (1 GEN = 1000000000000000000 wei).
 If verdict is not 'allocate', return empty allocations array."""
 
         task = (
-            "Evaluate the applicants against the sponsor policy and evidence requirements. "
-            "Allocate GEN from the pool fairly to qualified applicants. "
+            "Evaluate applicants against the sponsor policy and evidence requirements. "
+            "Allocate GEN fairly to qualified applicants without exceeding the pool. "
             "Return a minimal canonical JSON allocation verdict only."
         )
         criteria = (
-            "The response must be valid JSON only. "
+            "The response must be valid JSON only with no prose. "
             f"verdict must be one of: {', '.join(ALLOWED_VERDICTS)}. "
-            f"confidence for each allocation must be one of: {', '.join(ALLOWED_CONFIDENCE)}. "
-            f"reason_code for each allocation must be one of: {', '.join(ALLOWED_REASON_CODES)}. "
-            "total_allocated must not exceed pool amount. "
-            "All amounts must be non-negative integer strings in wei. "
-            "application_id and recipient must match submitted applications exactly."
+            "total_allocated must be a string integer in wei not exceeding pool. "
+            "Each allocation amount must be a string integer in wei. "
+            "application_id and recipient must exactly match the submitted applications. "
+            "No markdown, no explanation."
         )
 
         def nondet_allocate() -> str:
@@ -367,7 +365,6 @@ If verdict is not 'allocate', return empty allocations array."""
             self.rounds[round_id] = _json(rd2)
             return
 
-        # ---- Hard validation ----
         verdict_str = str(verdict_dict.get("verdict", "")).lower()
         if verdict_str not in ALLOWED_VERDICTS:
             rd2 = _loads(self.rounds.get(round_id, ""), {})
@@ -379,60 +376,47 @@ If verdict is not 'allocate', return empty allocations array."""
         max_payout = int(rd["max_payout_per_recipient"])
         max_recipients_int = int(rd["max_recipients"])
         alloc_list = verdict_dict.get("allocations", [])
-
         if not isinstance(alloc_list, list):
             alloc_list = []
-
-        total_alloc = 0
-        seen_app_ids = set()
-        valid_allocs = []
 
         # Build app lookup
         app_lookup = {}
         for a in apps_list:
             app_lookup[str(a.get("application_id", ""))] = a
 
+        total_alloc = 0
+        seen_app_ids = set()
+        valid_allocs = []
+
         if verdict_str == "allocate":
             if len(alloc_list) > max_recipients_int:
-                rd2 = _loads(self.rounds.get(round_id, ""), {})
-                rd2["status"] = "submissions_closed"
-                self.rounds[round_id] = _json(rd2)
-                return
+                alloc_list = alloc_list[:max_recipients_int]
 
             for alloc in alloc_list:
                 if not isinstance(alloc, dict):
                     continue
                 aid = str(alloc.get("application_id", ""))
-                recipient = str(alloc.get("recipient", ""))
+                if aid not in app_lookup or aid in seen_app_ids:
+                    continue
                 try:
                     amount = int(alloc.get("amount", "0"))
                 except Exception:
                     amount = 0
-                conf = str(alloc.get("confidence", "")).lower()
-                rc = str(alloc.get("reason_code", "")).lower()
-
-                # Validate
-                if aid not in app_lookup:
+                if amount <= 0 or amount > max_payout:
                     continue
-                if aid in seen_app_ids:
+                if total_alloc + amount > pool_amount:
                     continue
-                if amount <= 0:
-                    continue
-                if amount > max_payout:
-                    continue
-                app_recipient = app_lookup[aid].get("recipient_address", "")
-                if recipient.lower() != app_recipient.lower():
-                    recipient = app_recipient
+                conf = str(alloc.get("confidence", "low")).lower()
                 if conf not in ALLOWED_CONFIDENCE:
                     conf = "low"
+                rc = str(alloc.get("reason_code", "partial_policy_fit")).lower()
                 if rc not in ALLOWED_REASON_CODES:
                     rc = "partial_policy_fit"
+                # Enforce recipient matches submitted address
+                recipient = app_lookup[aid].get("recipient_address", "")
 
                 seen_app_ids.add(aid)
                 total_alloc += amount
-                if total_alloc > pool_amount:
-                    total_alloc -= amount
-                    break
                 valid_allocs.append({
                     "application_id": aid,
                     "recipient": recipient,
@@ -443,7 +427,7 @@ If verdict is not 'allocate', return empty allocations array."""
                     "claimed_at": "0",
                 })
 
-        # Store allocations
+        # Persist allocations
         for alloc in valid_allocs:
             aid = alloc["application_id"]
             self.allocations[f"{round_id}:{aid}"] = _json(alloc)
@@ -453,15 +437,14 @@ If verdict is not 'allocate', return empty allocations array."""
                 app_data = _loads(app_raw, {})
                 app_data["status"] = "allocated"
                 self.applications[app_key] = _json(app_data)
-
-            # Track recipient rounds
+            # Track recipient
             rec_addr = alloc["recipient"]
             rec_rids = _loads(self.recipient_rounds.get(rec_addr, ""), [])
             if round_id not in rec_rids:
                 rec_rids.append(round_id)
             self.recipient_rounds[rec_addr] = _json(rec_rids)
 
-        # Mark rejected applications
+        # Mark rejected
         allocated_ids = {a["application_id"] for a in valid_allocs}
         for a in apps_list:
             aid = str(a.get("application_id", ""))
@@ -473,12 +456,15 @@ If verdict is not 'allocate', return empty allocations array."""
                     app_data["status"] = "rejected"
                     self.applications[app_key] = _json(app_data)
 
-        # Canonical verdict for storage (EP-minimal fields only)
+        # Build canonical verdict (EP-minimal)
         sorted_allocs = sorted(valid_allocs, key=lambda x: int(x["application_id"]))
         rejected_ids_raw = verdict_dict.get("rejected_application_ids", [])
         if not isinstance(rejected_ids_raw, list):
             rejected_ids_raw = []
-        sorted_rejected = sorted([str(x) for x in rejected_ids_raw], key=lambda x: int(x) if x.isdigit() else 0)
+        sorted_rejected = sorted(
+            [str(x) for x in rejected_ids_raw],
+            key=lambda x: int(x) if x.isdigit() else 0
+        )
         risk_flags = verdict_dict.get("risk_flags", [])
         if not isinstance(risk_flags, list):
             risk_flags = []
@@ -533,7 +519,7 @@ If verdict is not 'allocate', return empty allocations array."""
         amount = int(alloc.get("amount", "0"))
         assert amount > 0, "Allocation amount is zero"
 
-        # Mark claimed BEFORE transfer (prevent re-entrancy)
+        # Mark claimed BEFORE transfer (reentrancy guard)
         alloc["claimed"] = True
         alloc["claimed_at"] = str(int(gl.message.timestamp))
         self.allocations[alloc_key] = _json(alloc)
@@ -541,7 +527,6 @@ If verdict is not 'allocate', return empty allocations array."""
         rd["claimed_amount"] = str(int(rd.get("claimed_amount", "0")) + amount)
         self.rounds[round_id] = _json(rd)
 
-        # Transfer GEN to recipient EOA
         _EOA(Address(recipient)).emit_transfer(value=u256(amount))
 
     # -----------------------------------------------------------------------
@@ -564,7 +549,6 @@ If verdict is not 'allocate', return empty allocations array."""
         refund_amount = pool - allocated
         assert refund_amount > 0, "No unallocated GEN to refund"
 
-        # Mark before transfer
         rd["unallocated_refunded"] = True
         self.rounds[round_id] = _json(rd)
 
@@ -582,17 +566,12 @@ If verdict is not 'allocate', return empty allocations array."""
 
         caller = str(gl.message.sender_address)
         assert caller == rd["sponsor"], "Only sponsor can cancel"
-        assert rd["status"] not in ("finalized", "cancelled"), "Round cannot be cancelled in this state"
+        assert rd["status"] not in ("finalized", "cancelled"), "Cannot cancel in this state"
 
-        app_count = int(self.app_counts.get(round_id, u256(0)))
+        app_count = int(rd.get("app_count", "0"))
         deadline_passed = int(gl.message.timestamp) >= int(rd["submission_deadline"])
-
-        can_cancel = (
-            app_count == 0
-            or (deadline_passed and app_count == 0)
-            or rd["status"] in ("funded_open",)
-        )
-        assert can_cancel, "Cannot cancel a round that has received applications"
+        assert app_count == 0 or (deadline_passed and app_count == 0), \
+            "Cannot cancel a round that has received applications"
 
         pool = int(rd["pool_amount"])
         assert pool > 0, "No GEN to refund"
@@ -616,16 +595,20 @@ If verdict is not 'allocate', return empty allocations array."""
 
     @gl.public.view
     def get_round_count(self) -> str:
-        return str(int(self.round_count))
+        return str(len(self.round_ids))
 
     @gl.public.view
     def get_round_applications(self, round_id: str) -> str:
-        app_count = int(self.app_counts.get(round_id, u256(0)))
+        raw = self.rounds.get(round_id, "")
+        if not raw:
+            return _json([])
+        rd = _loads(raw, {})
+        app_count = int(rd.get("app_count", "0"))
         result = []
         for i in range(1, app_count + 1):
-            raw = self.applications.get(f"{round_id}:{i}", "")
-            if raw:
-                result.append(_loads(raw, {}))
+            app_raw = self.applications.get(f"{round_id}:{i}", "")
+            if app_raw:
+                result.append(_loads(app_raw, {}))
         return _json(result)
 
     @gl.public.view
@@ -637,22 +620,30 @@ If verdict is not 'allocate', return empty allocations array."""
 
     @gl.public.view
     def get_allocations(self, round_id: str) -> str:
-        app_count = int(self.app_counts.get(round_id, u256(0)))
+        raw = self.rounds.get(round_id, "")
+        if not raw:
+            return _json([])
+        rd = _loads(raw, {})
+        app_count = int(rd.get("app_count", "0"))
         result = []
         for i in range(1, app_count + 1):
-            raw = self.allocations.get(f"{round_id}:{i}", "")
-            if raw:
-                result.append(_loads(raw, {}))
+            alloc_raw = self.allocations.get(f"{round_id}:{i}", "")
+            if alloc_raw:
+                result.append(_loads(alloc_raw, {}))
         return _json(result)
 
     @gl.public.view
     def get_claimable(self, round_id: str, address: str) -> str:
-        app_count = int(self.app_counts.get(round_id, u256(0)))
+        raw = self.rounds.get(round_id, "")
+        if not raw:
+            return _json([])
+        rd = _loads(raw, {})
+        app_count = int(rd.get("app_count", "0"))
         result = []
         for i in range(1, app_count + 1):
-            raw = self.allocations.get(f"{round_id}:{i}", "")
-            if raw:
-                alloc = _loads(raw, {})
+            alloc_raw = self.allocations.get(f"{round_id}:{i}", "")
+            if alloc_raw:
+                alloc = _loads(alloc_raw, {})
                 if alloc.get("recipient", "").lower() == address.lower() and not alloc.get("claimed", False):
                     result.append(alloc)
         return _json(result)
@@ -673,7 +664,7 @@ If verdict is not 'allocate', return empty allocations array."""
         result = []
         for rid in rids:
             rd = _loads(self.rounds.get(rid, ""), {})
-            app_count = int(self.app_counts.get(rid, u256(0)))
+            app_count = int(rd.get("app_count", "0"))
             for i in range(1, app_count + 1):
                 alloc_raw = self.allocations.get(f"{rid}:{i}", "")
                 if alloc_raw:
@@ -710,10 +701,9 @@ If verdict is not 'allocate', return empty allocations array."""
 
     @gl.public.view
     def list_rounds(self) -> str:
-        total = int(self.round_count)
         result = []
-        for i in range(1, total + 1):
-            raw = self.rounds.get(str(i), "")
+        for rid in self.round_ids:
+            raw = self.rounds.get(rid, "")
             if raw:
                 rd = _loads(raw, {})
                 result.append({
@@ -725,6 +715,6 @@ If verdict is not 'allocate', return empty allocations array."""
                     "allocated_amount": rd.get("allocated_amount"),
                     "status": rd.get("status"),
                     "submission_deadline": rd.get("submission_deadline"),
-                    "app_count": str(int(self.app_counts.get(str(i), u256(0)))),
+                    "app_count": rd.get("app_count", "0"),
                 })
         return _json(result)
