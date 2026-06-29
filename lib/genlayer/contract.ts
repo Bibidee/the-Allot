@@ -278,12 +278,18 @@ export function waitForTx(
   (async () => {
     try {
       // @ts-expect-error waitForTransactionReceipt may not be typed
-      await client.waitForTransactionReceipt({ hash });
+      await client.waitForTransactionReceipt({ hash, status: "ACCEPTED", retries: 60, interval: 5000 });
       onUpdate({ status: "finalized", hash });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      // Network fetch errors mean we lost the connection, not that the tx failed
-      if (msg.includes("fetch") || msg.includes("network") || msg.includes("Failed to fetch")) {
+      // Timeout or network errors — tx likely went through, just couldn't confirm
+      if (
+        msg.includes("fetch") ||
+        msg.includes("network") ||
+        msg.includes("Failed to fetch") ||
+        msg.includes("Timed out") ||
+        msg.includes("timed out")
+      ) {
         onUpdate({ status: "unconfirmed", hash, error: "Transaction sent — confirmation timed out. Check the explorer to verify." });
       } else {
         onUpdate({ status: "error", hash, error: msg });
