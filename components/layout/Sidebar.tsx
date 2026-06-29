@@ -25,7 +25,7 @@ export function Sidebar() {
 
       <nav className="flex-1 py-4 space-y-0.5">
         {NAV.map(({ href, label, icon: Icon, exact }) => {
-          const active = exact ? path === href : path.startsWith(href) && href !== "/";
+          const active = exact ? path === href : path === href || (path.startsWith(href + "/") && href !== "/");
           return (
             <Link
               key={href}
