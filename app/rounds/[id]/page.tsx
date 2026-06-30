@@ -196,8 +196,8 @@ export default function RoundDetailPage() {
       </div>
 
       {/* Main 2+1 grid */}
-      <div className="grid gap-5" style={{ gridTemplateColumns: "1fr 320px" }}>
-        <div className="space-y-5">
+      <div className="grid gap-5 grid-cols-1 lg:grid-cols-[1fr_320px]">
+        <div className="space-y-5 min-w-0">
 
           {/* Verdict Stamp */}
           <ConsensusVerdictPanel round={round} allocations={allocs} />
@@ -279,7 +279,7 @@ export default function RoundDetailPage() {
         </div>
 
         {/* Right column */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <EscrowVaultCard round={round} />
           <PolicyPanel round={round} />
           {allocs.length > 0 && <AllocationBreakdownChart allocations={allocs} pool={round.pool_amount} />}

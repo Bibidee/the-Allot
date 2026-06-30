@@ -77,7 +77,7 @@ export default function SponsorPage() {
         <div className="space-y-5">
 
           {/* Stats */}
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { label: "Total Rounds", value: <span className="text-xl font-bold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{rounds.length}</span> },
               { label: "Total Escrowed", value: <span className="text-base font-bold" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--gold-text)" }}>{weiToGen(totalEscrowed.toString())} GEN</span> },

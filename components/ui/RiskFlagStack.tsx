@@ -7,7 +7,11 @@ export function RiskFlagStack({ flags }: Props) {
   return (
     <div className="flex flex-wrap gap-2">
       {flags.map((flag, i) => (
-        <span key={i} className="px-2 py-1 bg-[#2a1a0d] border border-[#f97316]/30 rounded text-[10px] font-mono text-[#fb923c] uppercase tracking-wider">
+        <span key={i} className="px-2 py-1 text-[10px] uppercase tracking-wider"
+          style={{
+            background: "rgba(201,125,6,0.08)", border: "1px solid rgba(201,125,6,0.3)",
+            borderRadius: "3px", fontFamily: "'JetBrains Mono', monospace", color: "var(--amber)",
+          }}>
           {flag.replace(/_/g, " ")}
         </span>
       ))}

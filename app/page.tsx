@@ -71,10 +71,10 @@ export default function CourtPage() {
       </div>
 
       {/* Three-column court room */}
-      <div className="grid gap-4 mb-6" style={{ gridTemplateColumns: "1fr 2fr 1fr" }}>
+      <div className="grid gap-4 mb-6 grid-cols-1 lg:grid-cols-[1fr_2fr_1fr]">
 
         {/* LEFT — Vault Stats */}
-        <div className="space-y-3">
+        <div className="space-y-3 min-w-0">
           <div className="text-[9px] uppercase tracking-[0.2em] mb-2 flex items-center gap-2"
             style={{ color: "var(--text-3)", fontFamily: "'JetBrains Mono', monospace" }}>
             <Lock className="w-3 h-3" style={{ color: "var(--gold)" }} />
@@ -136,7 +136,7 @@ export default function CourtPage() {
         </div>
 
         {/* CENTER — Allocation Table */}
-        <div>
+        <div className="min-w-0">
           <div className="text-[9px] uppercase tracking-[0.2em] mb-3 flex items-center gap-2"
             style={{ color: "var(--text-3)", fontFamily: "'JetBrains Mono', monospace" }}>
             <Scale className="w-3 h-3" style={{ color: "var(--court-blue-b)" }} />
@@ -236,7 +236,7 @@ export default function CourtPage() {
         </div>
 
         {/* RIGHT — Verdict rail */}
-        <div>
+        <div className="min-w-0">
           <div className="text-[9px] uppercase tracking-[0.2em] mb-3 flex items-center gap-2"
             style={{ color: "var(--text-3)", fontFamily: "'JetBrains Mono', monospace" }}>
             <Gavel className="w-3 h-3" style={{ color: "var(--court-blue-b)" }} />
@@ -305,7 +305,7 @@ export default function CourtPage() {
           style={{ color: "var(--text-3)", fontFamily: "'JetBrains Mono', monospace" }}>
           Round Lifecycle
         </div>
-        <div className="flex items-center gap-0">
+        <div className="flex items-center overflow-x-auto">
           {[
             { label: "Fund", desc: "Sponsor deposits GEN", color: "var(--gold-text)" },
             { label: "Collect", desc: "Applicants file dossiers", color: "var(--court-blue-b)" },
@@ -314,13 +314,13 @@ export default function CourtPage() {
             { label: "Claim", desc: "Recipients claim GEN", color: "var(--mint-bright)" },
             { label: "Refund", desc: "Sponsor reclaims unallocated", color: "var(--gold-text)" },
           ].map((step, i, arr) => (
-            <div key={step.label} className="flex items-center flex-1">
+            <div key={step.label} className="flex items-center flex-1 min-w-[100px]">
               <div className="flex-1 text-center">
                 <div className="text-[10px] font-semibold mb-0.5"
                   style={{ color: step.color, fontFamily: "'Space Grotesk', sans-serif" }}>
                   {step.label}
                 </div>
-                <div className="text-[10px]" style={{ color: "var(--text-2)" }}>{step.desc}</div>
+                <div className="text-[10px] whitespace-nowrap" style={{ color: "var(--text-2)" }}>{step.desc}</div>
               </div>
               {i < arr.length - 1 && (
                 <ArrowRight className="w-3 h-3 flex-shrink-0 mx-1" style={{ color: "var(--text-3)" }} />
